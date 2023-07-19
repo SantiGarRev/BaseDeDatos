@@ -95,3 +95,14 @@ AFTER DELETE ON prestamos
 FOR EACH ROW
 EXECUTE FUNCTION registrar_devolucion();
 
+-- Crear función libros_prestados
+CREATE OR REPLACE FUNCTION libros_prestados()
+RETURNS INTEGER AS $$
+DECLARE
+    cantidad_prestados INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO cantidad_prestados
+    FROM prestamos;
+    RETURN cantidad_prestados;
+END;
+$$ LANGUAGE plpgsql;
