@@ -1,0 +1,97 @@
+CREATE TABLE lectores (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100),
+    apellido VARCHAR(100),
+    email VARCHAR(100),
+    fecha_nacimiento DATE
+);
+
+INSERT INTO lectores (nombre, apellido, email, fecha_nacimiento) VALUES
+    ('Juan Alberto', 'Cortéz', 'juancortez@gmail.com', '1983-06-20'),
+    ('Antonia', 'de los Ríos', 'antoniarios_23@yahoo.com', '1978-11-24'),
+    ('Nicolás', 'Martin', 'nico_martin23@gmail.com', '1986-07-11'),
+    ('Néstor', 'Casco', 'nestor_casco2331@hotmmail.com', '1981-02-11'),
+    ('Lisa', 'Pérez', 'lisperez@hotmail.com', '1994-08-11'),
+    ('Ana Rosa', 'Estagnolli', 'anros@abcdatos.com', '1974-10-15'),
+    ('Milagros', 'Pastoruti', 'mili_2231@gmail.com', '2001-01-22'),
+    ('Pedro', 'Alonso', 'alonso.pedro@impermebilizantesrosario.com', '1983-09-05'),
+    ('Arturo Ezequiel', 'Ramírez', 'artu.rama@outlook.com', '1998-03-29'),
+    ('Juan Ignacio', 'Altarez', 'juanaltarez.223@yahoo.com', '1975-08-24');
+
+CREATE TABLE libros (
+    id SERIAL PRIMARY KEY,
+    titulo VARCHAR(100),
+    editorial VARCHAR(100),
+    autor VARCHAR(100),
+    isbn VARCHAR(50)
+);
+
+INSERT INTO libros (titulo, editorial, autor, isbn) VALUES
+    ('La hojarasca', 'Sudamericana', 'Gabriel García Márquez', '7787898'),
+    ('El amor en los tiempos del cólera', 'Sudamericana', 'Gabriel García Márquez', '2564111'),
+    ('La casa de los espíritus', 'Ediciones Chile', 'Isabel Allende', '5544781'),
+    ('Paula', 'Ediciones Chile', 'Isabel Allende', '22545447'),
+    ('La tregua', 'Alfa', 'Mario Benedetti', '2225412'),
+    ('Gracias por el fuego', 'Alfa', 'Mario Benedetti', '88541254');
+
+--Consultas para conocer cuántas veces se presta un determinado libro:
+SELECT libro_id, COUNT(*) AS cantidad_prestamos
+FROM prestamos
+GROUP BY libro_id
+ORDER BY cantidad_prestamos DESC;
+
+--Consulta para saber la cantidad de libros que tiene en préstamo cada lector:
+SELECT l.id, l.nombre, l.apellido, COUNT(p.libro_id) AS cantidad_libros_prestados
+FROM lectores l
+LEFT JOIN prestamos p ON l.id = p.lector_id
+GROUP BY l.id, l.nombre, l.apellido
+ORDER BY cantidad_libros_prestados DESC;
+
+--Simular devolución de un libro por el lector
+-- Supongamos que el lector con ID 1 ha devuelto el libro con ID 5
+DELETE FROM prestamos
+WHERE lector_id = 1 AND libro_id = 5;
+
+--Obtener el promedio de edad de los lectores, el lector con más años y el lector más joven
+SELECT AVG(EXTRACT(YEAR FROM age(fecha_nacimiento))) AS promedio_edad,
+       MAX(EXTRACT(YEAR FROM age(fecha_nacimiento))) AS max_edad,
+       MIN(EXTRACT(YEAR FROM age(fecha_nacimiento))) AS min_edad
+FROM lectores;
+
+--Crear una vista llamada libros_prestados
+CREATE VIEW libros_prestados AS
+SELECT l.nombre || ' ' || l.apellido AS lector,
+       li.titulo AS libro,
+       li.editorial,
+       li.isbn
+FROM lectores l
+LEFT JOIN prestamos p ON l.id = p.lector_id
+LEFT JOIN libros li ON p.libro_id = li.id;
+
+--Para ejecutar la vista y obtener los libros prestados para el lector "Pedro Alonso":
+SELECT * FROM libros_prestados WHERE lector = 'Pedro Alonso';
+
+-- Crear tabla de logs
+CREATE TABLE logs (
+    id serial PRIMARY KEY,
+    lector_id integer REFERENCES lectores(id),
+    libro_id integer REFERENCES libros(id),
+    fecha_devolucion timestamp
+);
+
+-- Crear función para el trigger
+CREATE OR REPLACE FUNCTION registrar_devolucion()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO logs (lector_id, libro_id, fecha_devolucion)
+    VALUES (OLD.lector_id, OLD.libro_id, NOW());
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Crear el trigger
+CREATE TRIGGER trigger_registro_devolucion
+AFTER DELETE ON prestamos
+FOR EACH ROW
+EXECUTE FUNCTION registrar_devolucion();
+
