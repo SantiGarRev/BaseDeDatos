@@ -1,0 +1,105 @@
+-- Crear la tabla de lectores
+CREATE TABLE lectores (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100),
+    apellido VARCHAR(100),
+    email VARCHAR(100),
+    fecha_nacimiento DATE
+);
+
+-- Insertar datos en la tabla de lectores
+INSERT INTO lectores (nombre, apellido, email, fecha_nacimiento) VALUES
+    ('Juan Alberto', 'Cortéz', 'juancortez@gmail.com', '1983-06-20'),
+    ('Antonia', 'de los Rios', 'antoniarios_23@yahoo.com', '1978-11-24'),
+    ('Nicolás', 'Martin', 'nico_martin23@gmail.com', '1986-07-11'),
+    ('Néstor', 'Casco', 'nestor_casco2331@hotmail.com', '1981-02-11'),
+    ('Lisa', 'Pérez', 'lisperez@hotmail.com', '1994-08-11'),
+    ('Ana Rosa', 'Estagnolli', 'anros@abcdatos.com', '1974-10-15'),
+    ('Milagros', 'Pastoruti', 'mili_2231@gmail.com', '2001-01-22'),
+    ('Pedro', 'Alonso', 'alonso.pedro@impermebilizantesrosario.com', '1983-09-05'),
+    ('Arturo Ezequiel', 'Ramírez', 'artu.rama@outlook.com', '1998-03-29'),
+    ('Juan Ignacio', 'Altarez', 'juanaltarez.223@yahoo.com', '1975-08-24');
+
+-- Crear la tabla de libros
+CREATE TABLE libros (
+    id SERIAL PRIMARY KEY,
+    nombre_libro VARCHAR(200),
+    editorial VARCHAR(100),
+    autor VARCHAR(100),
+    isbn VARCHAR(50)
+);
+
+-- Insertar datos en la tabla de libros
+INSERT INTO libros (nombre_libro, editorial, autor, isbn) VALUES
+    ('Cementerio de animales', 'Ediciones de Mente', 'Stephen King', '4568874'),
+    ('En el nombre de la rosa', 'Editorial España', 'Umberto Eco', '44558877'),
+    ('Cien años de soledad', 'Sudamericana', 'Gabriel Garcia Márquez', '7788845'),
+    ('El diario de Ellen Rimbauer', 'Editorial Maine', 'Stephen King', '45699874'),
+    ('La hojarasca', 'Sudamericana', 'Gabriel García Márquez', '7787898'),
+    ('El amor en los tiempos del cólera', 'Sudamericana', 'Gabriel García Márquez', '2564111'),
+    ('La casa de los espíritus', 'Ediciones Chile', 'Isabel Allende', '5544781'),
+    ('Paula', 'Ediciones Chile', 'Isabel Allende', '22545447'),
+    ('La tregua', 'Alfa', 'Mario Benedetti', '2225412'),
+    ('Gracias por el fuego', 'Alfa', 'Mario Benedetti', '88541254');
+
+-- Crear la tabla de prestamos
+CREATE TABLE prestamos (
+    id SERIAL PRIMARY KEY,
+    lector_id INTEGER,
+    libro_id INTEGER,
+    fecha_prestamo TIMESTAMP DEFAULT NOW()
+);
+
+-- Realizar préstamos (ejemplo, puedes ajustar los IDs según tus necesidades)
+INSERT INTO prestamos (lector_id, libro_id) VALUES
+    (1, 1), (1, 2), (1, 3), (1, 4), (1, 5),
+    (2, 1), (2, 3), (2, 4),
+    (3, 2), (3, 3), (3, 5),
+    (4, 6), (4, 7), (4, 8),
+    (5, 6), (5, 10);
+
+-- Realizar devoluciones (ejemplo, puedes ajustar los IDs según tus necesidades)
+DELETE FROM prestamos WHERE lector_id = 1 AND libro_id = 2;
+DELETE FROM prestamos WHERE lector_id = 3 AND libro_id = 5;
+DELETE FROM prestamos WHERE lector_id = 4 AND libro_id = 6;
+
+-- Crear la tabla de logs
+CREATE TABLE logs (
+    id SERIAL PRIMARY KEY,
+    lector_id INTEGER,
+    libro_id INTEGER,
+    fecha_devolucion TIMESTAMP
+);
+
+-- Crear el trigger para registrar las devoluciones en la tabla de logs
+CREATE OR REPLACE FUNCTION registro_devolucion()
+RETURNS TRIGGER AS
+$$
+BEGIN
+    INSERT INTO logs (lector_id, libro_id, fecha_devolucion)
+    VALUES (OLD.lector_id, OLD.libro_id, NOW());
+    RETURN OLD;
+END;
+$$
+LANGUAGE plpgsql;
+
+-- Crear el trigger que ejecuta la función al realizar una devolución
+CREATE TRIGGER trigger_registro_devolucion
+AFTER DELETE ON prestamos
+FOR EACH ROW
+EXECUTE FUNCTION registro_devolucion();
+
+-- Crear la función "libros_prestados"
+CREATE OR REPLACE FUNCTION libros_prestados()
+RETURNS INTEGER AS
+$$
+DECLARE
+    cantidad_prestamos INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO cantidad_prestamos
+    FROM prestamos;
+
+    RETURN cantidad_prestamos;
+END;
+$$
+LANGUAGE plpgsql;
